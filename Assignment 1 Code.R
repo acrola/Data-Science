@@ -9,12 +9,14 @@
 # assignment folder for easy access. From now on do not use the full path,
 # but only the name of the file within this path.
 ################################
+setwd("C:\\Users\\Avi\\AppData\\Roaming\\SPB_16.6\\Data-Science")
 
 
 
 # 1.c. (3) Import the CSV file "movies.csv" into R and save it
 # by the name data. Notice the data in the file already has row numbers(so pay attention to the function arguments).
 ################################
+data <- read.csv(file = 'movies.csv', header = FALSE)
 
 
 
@@ -31,6 +33,7 @@
 # rows of the data. Check that the function you used 
 # above read the file appropriately.
 ################################
+head(data)
 
 
 # 2.b.(3) This data contains many movies with a few number of votes, delete all movies with less then 100 votes
