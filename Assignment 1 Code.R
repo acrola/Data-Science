@@ -1,5 +1,5 @@
-#ID 1: __________
-#ID 2: __________
+#ID 1: 203056585 
+#ID 2: 301380416 
 
 
 # 1.a. Download and extract the data from moodle into a local folder designated for this assignment.
