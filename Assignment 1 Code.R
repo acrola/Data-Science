@@ -16,18 +16,19 @@ setwd("C:\\Users\\Avi\\AppData\\Roaming\\SPB_16.6\\Data-Science")
 # 1.c. (3) Import the CSV file "movies.csv" into R and save it
 # by the name data. Notice the data in the file already has row numbers(so pay attention to the function arguments).
 ################################
-data <- read.csv(file = 'movies.csv', header = FALSE)
+data <- read.csv(file = 'movies.csv', header = TRUE)
 
 
 
 # 1.d. (1) The features "r1","r2"...r10" will not be relevant for us, remove them from the data.
 ################################
-
+drops <- c("r1","r2","r3","r4","r5","r6","r7","r8","r9","r10")
+data <- data[ , !(names(data) %in% drops)]
 
 
 # 1.e. (2) show all features names and the data type each one contains. 
 ################################
-
+sapply(data, class)
 
 # 2.a. (2) Use a command that shows you the first few
 # rows of the data. Check that the function you used 
