@@ -9,8 +9,8 @@
 # assignment folder for easy access. From now on do not use the full path,
 # but only the name of the file within this path.
 ################################
-#setwd("C:\\Users\\Avi\\AppData\\Roaming\\SPB_16.6\\Data-Science")
-setwd("C:\\Users\\dor\\Documents\\Data-Science")
+setwd("C:\\Users\\Avi\\AppData\\Roaming\\SPB_16.6\\Data-Science")
+#setwd("C:\\Users\\dor\\Documents\\Data-Science")
 
 
 # 1.c. (3) Import the CSV file "movies.csv" into R and save it
@@ -39,7 +39,7 @@ head(data)
 # 2.b.(3) This data contains many movies with a few number of votes, delete all movies with less then 100 votes
 #for better understanding of the data.
 ################################
-data <- data[!data$votes<100,]
+data <- data[data$votes>100,]
 
 
 # 2.c. (4) Categorical features: We can see (from 1.e) that the features "Action","Animation",...,"short"
@@ -56,7 +56,15 @@ for (category in names(data[9:15])){
 # 2.d. (5) Numeric features: Create a summary statistics: mean, standard deviation, variance, min, max, median, range, and quantile
 #for each numeric feature in the data.
 ################################
-summary(data[3:7]) #TODO this is not good enough. cant find a summry type which answers these questions exactly
+numeric <- data[3:7] 
+sapply(numeric,na.rm=FALSE, mean)
+sapply(numeric,na.rm=FALSE, sd)
+sapply(numeric,na.rm=FALSE, var)
+sapply(numeric,na.rm=FALSE, min)
+sapply(numeric,na.rm=FALSE, max)
+sapply(numeric,na.rm=FALSE, median)
+sapply(numeric,na.rm=FALSE, range)
+sapply(numeric,na.rm=TRUE, quantile)
 
 
 # 3.a. (3) Count the number of rows that have missing values.
@@ -81,29 +89,36 @@ max.name
 # if so, remove all rows with the missing values
 # if not, find different way to deal with the missing values and implement it.
 ################################
-# ANSWER: there are 12009 rows with missing values and only 3704 without.
-#         removing those rows will cause losing to much data.
-# the missing values are only at the "budget" column so we will just remove it.
-#TODO: might be better to take the median of budget
+# ANSWER: There are 12009 rows with missing values and only 3704 without.
+#         removing those rows will cause losing too much data.
+#         The missing values are only at the "budget" column so we will just remove it.
+apply(data["budget"], 2, function(col)sum(is.na(col))/length(col))
+# With the command above, we can see that there is 76.4% of missing values in the budget columns. 
+# Therefore, we will remove this column:
 data <- data[,!names(data) == "budget"]
-
 
 # 4.a. (4) Make a qq plot for each of the following features: year,rating,votes.
 # Explain what we can learn from a qq plot about the distribution of the data.
 ################################
-# ANSWER: TODO
+# ANSWER: The quantile-quantile or q-q plot is an exploratory graphical device used to check the validity of a distributional assumption for a data set.
+#         In general, the basic idea is to compute the theoretically expected value for each data point based on the distribution in question.
+#         We can see from the qq-plots that rating and year features are properly sampled normally, but votes doe's not, and is quit skewed.
 qqnorm(data$rating, main = "Normal Q-Q Plot - rating")
+qqline(y=data[,"rating"])
 qqnorm(data$year, main = "Normal Q-Q Plot - year")
+qqline(y=data[,"year"])
 qqnorm(data$votes, main = "Normal Q-Q Plot - votes")
-
+qqline(y=data[,"votes"])
 
 # 4.b. (7) According to the qq plots,Do we need to normalize all the featuress? Which feature 
 # must be normalize? which normalization function should we use for this feature?
 # create new column with the normalized data (eg. norm.votes)
 ################################
-# ANSWER: TODO
-data$norm.votes <- scale(data$votes)
-qqnorm(data$norm.votes)
+# ANSWER: According to the qq plots we've got, we should normalize just the "votes" feature,
+#         because it's qq plot extreamly not linear.
+data["norm.votes"]
+data$norm.votes <- (data$votes - mean(data$votes)) / sd(data$votes)
+#data$norm.votes <- (data$votes - min(data$votes)) / (max(data$votes) - min(data$votes))
 
 # 4.c. (3) Give 3 ways to normalize data and explain why it is important to do so.
 ################################
@@ -117,14 +132,20 @@ qqnorm(data$norm.votes)
 # 5.a. (2) Create one plot containing all box plots for each of the numeric features of the data, 
 # (except the feature you normalized, insted used the normalized data).
 ################################
-#TODO: doesnt make sense
-boxplot(data[ , (names(data) %in% c("year", "leangth", "rating", "norm.votes"))])
-
+to_plot = data[,c("year","length", "rating", "norm.votes")]
+boxplot(to_plot, col=topo.colors(4))
 
 # 5.b. (4) Make a box plot for each feature individually and
 # give 2 observations you can see from the box plots (there is more than 2).
 ################################
-# ANSWER: TODO
+# ANSWER: years-      We can see that most of the years values are in the range of the 70's until the late 90's 
+#                     (the median, upper quartile and lower quartile are there).
+#                     We see that there are many outliers in the early years (under the minimum values)
+#         rating-     We can see that most of the rating values are in the range of the 5 to 7. 
+#                     (the median, upper quartile and lower quartile are there).
+#                     We see that there are many outliers in the small values of rating, smaller then 3 (under the minimum values)
+#         norm.votes -We see that there are many outliers in this whole feaure. probably due to the fact that this data is noisy.
+
 boxplot(data$year)
 title("year boxplot")
 boxplot(data$length)
@@ -138,18 +159,27 @@ title("norm.votes boxplot")
 # Remove those suspected outliers from the data using the box plot.
 ################################
 # IQR = 110-90=20.removing outliers from 1.5IQR
-data <- data[!(data$length>140 | data$length<60),]
+length.boxplot <- boxplot(data$length)
+data = data[!(data$length %in% length.boxplot$out),]
 
 
 # 5.d. (7) Use the LOF measure to remove outliers using the following features: "votes","length","rating".
 # Use k=20 and remove all instances that their LOF score is above 1.5
 ################################
-# TODO: cant install packages
+lof.data <- data[,c("votes","length","rating")]
+lof.data$length <- scale(data$length,center=TRUE,scale=TRUE)
+
+library(DMwR)
+l<- lofactor(data[,c("votes",
+                     "length","rating")], k=20)
+outliers <- l > 1.5
+
+data <- data[!outliers,]
 
 
 # 6.a. (5) Display a bar chart plotting the number
 # of movies per genre. Display the genre names vertically, each genre column in a different color.
-################################"Short"
+################################
 movies.num <- c(sum(data$Action==TRUE),sum(data$Animation==TRUE),sum(data$Comedy==TRUE),sum(data$Drama==TRUE),
                 sum(data$Documentary==TRUE),sum(data$Romance==TRUE),sum(data$Short==TRUE))
 barplot(movies.num, main = "movies per genre", names.arg = c("Action","Animation","Comedy","Drama","Documentary","Romance","Short"),
@@ -161,48 +191,52 @@ barplot(movies.num, main = "movies per genre", names.arg = c("Action","Animation
 # Compute the average rating for each sub category (e.g: average rank of long movie with few votes)
 # Can you spot a trend? 
 ################################
-# ANSWER: The longer a movie is and the more votes it gets, the higher its rating.
-length.binned <- ifelse(data$length>110, ('Long'), ifelse(data$length<90, ('Short'), ('Medium')))
-votes.binned <- ifelse(data$votes>500, ('Many votes'), ('Few Votes')) 
-average.byLength <- c(mean(data[data$length == 'Long',]$rating),mean(data[data$length == 'Medium',]$rating),mean(data[data$length == 'Short',]$rating))
-average.byLength <- c(mean(data[data$length == 'Long',]$rating),mean(data[data$length == 'Medium',]$rating),mean(data[data$length == 'Short',]$rating))
-
-level.length <- c('Long','Medium','Short')
-level.votes <- c('Many votes', 'Few votes')
-data.long <- data[data$length > 110,]
-data.medium <- data[90 <= data$length & data$length <= 110,]
-data.short <- data[data$length < 90,]
-data.manyvotes <- data[data$votes > 500,]
-data.fewvotes <- data[data$length <= 500,]
-average.long <- c(mean(data.long[data.long$votes > 500,]$rating), mean(data.long[data.long$votes <= 500,]$rating))
-average.medium <- c(mean(data.medium[data.medium$votes > 500,]$rating), mean(data.medium[data.medium$votes <= 500,]$rating))
-average.short <- c(mean(data.short[data.short$votes > 500,]$rating), mean(data.short[data.short$votes <= 500,]$rating))
-
-average.long
-average.medium
-average.short
+# ANSWER: The longer a movie is and the more votes it gets -> the higher it's rating is.
+data$votes.desc = 'Many_votes'
+data[data$votes < 500, 'votes.desc'] = 'Few_votes'
+data$length.desc = 'Long'
+data[data$length < 110, 'length.desc'] = 'Medium'
+data[data$length < 90 , 'length.desc'] = 'Short'
+votes.length <- aggregate(data$rating, by=list(data$votes.desc, data$length.desc), FUN=mean)
+names(votes.length) <- c("votes","length","mean")
+votes.length
 
 # 6.c. (5) Make 2 density plots:
 # 1. density plot of ratings by the length levels colored by the length levels(the one you created in 6.b.)
 # 2. density plot of ratings by the votes levels colored by the votes levels(the one you created in 6.b.)
 # Does this plots support your claim from 6.b?
 ################################
-# ANSWER: ?????
-length.rating.average <- c(mean(data.short$rating),mean(data.medium$rating),mean(data.long$rating))
-votes.rating.average <- c(mean(data.short$rating),mean(data.medium$rating))
+# ANSWER: Yes, from the first density plot we see that the confidance is bigger as the movie gets longer,
+#         and the "peak" is more on the right as the movie gets longer, meaning as the movie gets longer, is gives a better rating.
+#         from the second density plot we see that for votes number bigger from 500 we are more confident about
+#         the raiting, and the "peak" is more on the right, meaning the biggest number of votes gives a better rating.
+plot(density(data[data$length.desc == 'Long','rating']),xlab = "raiting",main="raiting by length",col='green')
+lines(density(data[data$length.desc == 'Medium','rating']),xlab = "raiting",main="raiting by length",col='red')
+lines(density(data[data$length.desc == 'Short','rating']),xlab = "raiting",main="raiting by length",col='black')
+legend(1,0.42, c("Long","Medium","Short"), lwd=c(2.5,2.5),col=c("green","red","black"), box.lty=0)
+
+#density plot of ratings by votes
+plot(density(data[data$votes.desc == 'Many_votes','rating']),xlab = "raiting",main="raiting by votes",col='green')
+lines(density(data[data$votes.desc == 'Few_votes','rating']),xlab = "raiting",main="raiting by votes",col='red')
+legend(0.5,0.2, c("Many votes","Few votes"), lwd=c(2.5,2.5),col=c("green","red"), box.lty=0)
 
 
 
 # 7.a. (7) Display the correlation plot of the features. Make sure the plot is clearly visible 
 # use  scaled features (as given in the code)
 ################################
-
-
+scaled <- scale(data[,c('year','length','rating','votes')],center=TRUE,scale=TRUE)
+library(corrplot)
+correlations = cor(scaled.data)
+corrplot(correlations, method="color")
 
 
 # 7.b. (5) find features that have a correlation of over 0.5 and correlation of less than 0.
 # Can you see a clear trend? Can we get rid of one of those features?
 ################################
-
-
+# ANSWER: We can see clearly from the previous section's plot that there are no deep blue colored cubics, all are colored lightly,
+#         which means there are no strong correlations between the given features. We see that we have a red colored corolation between year and
+#         rating features, which means that probably older movies are rated higher than recent movies, but this corrolation 
+#         is weak since the red color is not deep. In conclusion, we cannot get rid of any of the features, we should keep them all.
+correlations
 
