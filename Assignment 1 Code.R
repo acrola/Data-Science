@@ -16,7 +16,7 @@ setwd("C:\\Users\\Avi\\AppData\\Roaming\\SPB_16.6\\Data-Science")
 # 1.c. (3) Import the CSV file "movies.csv" into R and save it
 # by the name data. Notice the data in the file already has row numbers(so pay attention to the function arguments).
 ################################
-data <- read.csv(file = 'movies.csv', header = TRUE)
+data <- read.csv(file = 'movies.csv', header = TRUE, na.strings=c("","NA"))
 
 
 # 1.d. (1) The features "r1","r2"...r10" will not be relevant for us, remove them from the data.
@@ -56,26 +56,29 @@ for (category in names(data[9:15])){
 # 2.d. (5) Numeric features: Create a summary statistics: mean, standard deviation, variance, min, max, median, range, and quantile
 #for each numeric feature in the data.
 ################################
-numeric <- data[3:7] 
-sapply(numeric,na.rm=FALSE, mean)
-sapply(numeric,na.rm=FALSE, sd)
-sapply(numeric,na.rm=FALSE, var)
-sapply(numeric,na.rm=FALSE, min)
-sapply(numeric,na.rm=FALSE, max)
-sapply(numeric,na.rm=FALSE, median)
-sapply(numeric,na.rm=FALSE, range)
-sapply(numeric,na.rm=TRUE, quantile)
+data.summary <- data[,c("length", "budget", "rating", "votes","year")]
+data.summary <- do.call(data.frame, list(mean = apply(data.summary, 2, na.rm=TRUE, mean),
+                                           sd = apply(data.summary, 2, na.rm=TRUE, sd),
+                                           variance = apply(data.summary, 2, na.rm=TRUE, var),
+                                           min = apply(data.summary, 2, na.rm=TRUE, min),
+                                           quantile.25 = apply(df_stat, 2, na.rm=TRUE, quantile, prob=0.25),
+                                           median = apply(data.summary, 2, na.rm=TRUE, median),
+                                           quantile.75 = apply(df_stat, 2, na.rm=TRUE, quantile, prob=0.75),
+                                           max = apply(data.summary, 2, na.rm=TRUE, max),
+                                           range = apply(data.summary, 2, na.rm=TRUE, max)-apply(data.summary, 2, na.rm=TRUE, min)))
+t(data.summary)
 
 
 # 3.a. (3) Count the number of rows that have missing values.
 # write the name off the column with the most missing values
 ################################
+#missing rows counts
 sum(!complete.cases(data))
-i <- 1
+
+#column with most missing values
 max.missing_values <- 0
 max.name <- ''
 for (category in names(data)){
-  print ("the sum ",sum(!complete.cases(data[[category]])))
   if (sum(!complete.cases(data[[category]])) > max.missing_values){
     max.name <- category
     max.missing_values <- sum(!complete.cases(data[[category]]))
@@ -91,11 +94,12 @@ max.name
 ################################
 # ANSWER: There are 12009 rows with missing values and only 3704 without.
 #         removing those rows will cause losing too much data.
-#         The missing values are only at the "budget" column so we will just remove it.
+#         The missing values are only at the "budget" and "mpaa" columns so we will just remove them.
 apply(data["budget"], 2, function(col)sum(is.na(col))/length(col))
-# With the command above, we can see that there is 76.4% of missing values in the budget columns. 
-# Therefore, we will remove this column:
-data <- data[,!names(data) == "budget"]
+apply(data["mpaa"], 2, function(col)sum(is.na(col))/length(col))
+# With the command above, we can see that there is 76.4% of missing values in the budget columns, and 75.7% in the mpaa columns. 
+# Therefore, we will remove them:
+data <- data[,!names(data) %in% c("budget","mpaa")]
 
 # 4.a. (4) Make a qq plot for each of the following features: year,rating,votes.
 # Explain what we can learn from a qq plot about the distribution of the data.
@@ -103,10 +107,11 @@ data <- data[,!names(data) == "budget"]
 # ANSWER: The quantile-quantile or q-q plot is an exploratory graphical device used to check the validity of a distributional assumption for a data set.
 #         In general, the basic idea is to compute the theoretically expected value for each data point based on the distribution in question.
 #         We can see from the qq-plots that rating and year features are properly sampled normally, but votes doe's not, and is quit skewed.
-qqnorm(data$rating, main = "Normal Q-Q Plot - rating")
-qqline(y=data[,"rating"])
-qqnorm(data$year, main = "Normal Q-Q Plot - year")
+par(mfrow=c(1,3))
+qqnorm(data$rating, main = "Normal Q-Q Plot - year")
 qqline(y=data[,"year"])
+qqnorm(data$year, main = "Normal Q-Q Plot - rating")
+qqline(y=data[,"rating"])
 qqnorm(data$votes, main = "Normal Q-Q Plot - votes")
 qqline(y=data[,"votes"])
 
@@ -166,10 +171,10 @@ data = data[!(data$length %in% length.boxplot$out),]
 # 5.d. (7) Use the LOF measure to remove outliers using the following features: "votes","length","rating".
 # Use k=20 and remove all instances that their LOF score is above 1.5
 ################################
+library(DMwR)
 lof.data <- data[,c("votes","length","rating")]
 lof.data$length <- scale(data$length,center=TRUE,scale=TRUE)
 
-library(DMwR)
 l<- lofactor(data[,c("votes",
                      "length","rating")], k=20)
 outliers <- l > 1.5
