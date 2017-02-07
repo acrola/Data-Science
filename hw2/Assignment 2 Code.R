@@ -1,5 +1,5 @@
-#ID 1: __________
-#ID 2: __________
+#ID 1: 203056585
+#ID 2: 301380416
 
 # Set your working directory to be your assignment folder. In that folder create three sub-folders named: 'Carvana', 'Diabetes' and 'Movies' in this exact format.
 # Download the Carvana, Diabetes and movies files from moodle and make sure that that your folder hierarchy is as such: 
