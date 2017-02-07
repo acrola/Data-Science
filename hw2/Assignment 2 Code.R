@@ -16,6 +16,9 @@ setwd("C:\\Users\\Avi\\AppData\\Roaming\\SPB_16.6\\Data-Science\\hw2\\Carvana")
 
 # All packages installetions:
 ##############
+library(caTools)
+library(lattice)
+library(caret)
 
 
 
@@ -34,7 +37,8 @@ data.c <- read.csv(file
                  = 'CARVANA.csv',
                  header = TRUE,
                  na.strings = c("", "NA")) # We replaced the null values with 'NA'.
-
+# We chose to use only complete cases. Leaves us about a third of the data
+data.c <- data.c[complete.cases(data.c),2:ncol(data.c)]
 
 
 # 1.b. (1) Set your random seed to some value so that our model comparisons will not be affected by randomness.
@@ -45,14 +49,16 @@ set.seed(42);
 # 1.c. (2) As the Carvana file is large, and will cause our models to run for a long time - take a sample of 30,000 rows,
 # and save it with the name data.c.
 ##############
-
+data.c <- data.c[sample(1:nrow(data.c), 30000, replace=FALSE),] 
 
 
 
 # 1.d. (3) Split the data into test (30%) and train (70%) sets with
 # respect to the target variable. Save them as train.c and test.c.
 ################################
-
+V <- sample.split(data.c, SplitRatio = 0.7, group = NULL )
+train.c <- data.c[V,]
+test.c <- data.c[!V,]
 
 
 
@@ -61,12 +67,15 @@ set.seed(42);
 
 # 2.a. (2) Convert all factorial features to numeric.
 #######################
-
+train.c <- data.frame(x=c("NaN","2"),y=c("NaN","3"),stringsAsFactors=FALSE)
+train.c <- as.data.frame(sapply(train.c, as.numeric)) #<- sapply is here
+test.c <- data.frame(x=c("NaN","2"),y=c("NaN","3"),stringsAsFactors=FALSE)
+test.c <- as.data.frame(sapply(test.c, as.numeric)) #<- sapply is here
 
 
 # 2.b. (1) Convert the lable feature('IsBadBuy') to factor with 2 levels (True/False)
 #######################
-
+train.c$IsBadBuy <- as.character(factor(findInterval(train.c$IsBadBuy, c(0, 1), rightmost.closed = TRUE),labels = c("True", "False")))
 
 
 # 2.c. (4) Display the correlation plot of the features. Make sure the plot is clearly visible.
