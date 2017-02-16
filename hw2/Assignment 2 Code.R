@@ -32,7 +32,6 @@ library(caret)
 library(lattice)
 library(corrplot)
 library(class)
-#library(rpart)
 library(pROC)
 library(DMwR)
 library(e1071)
@@ -68,11 +67,12 @@ data.c <- data.c[sample(1:nrow(data.c), 30000, replace=FALSE),]
 # 1.d. (3) Split the data into test (30%) and train (70%) sets with
 # respect to the target variable. Save them as train.c and test.c.
 ################################
+# First take 70% with IsBadBuy == 1
 data.c.isBadBuy = data.c[data.c$IsBadBuy == 1,]
 V <- sample.split(data.c.isBadBuy, SplitRatio = 0.7, group = NULL )
 train.c <- data.c.isBadBuy[V,]
 test.c <- data.c.isBadBuy[!V,]
-
+# Second add 30% with IsBadBuy == 0
 data.c.isNotBadBuy = data.c[data.c$IsBadBuy == 0,]
 V <- sample.split(data.c.isNotBadBuy, SplitRatio = 0.7, group = NULL )
 train.c <- rbind(train.c, data.c.isNotBadBuy[V,])
@@ -120,6 +120,7 @@ test.c.noHighCor <-  test.c[,!colnames(test.c) %in% Correlated.features]
 
 # 3.a (4) With the new train and test data frames - predict the test.c outcomes using knn, with k=1.
 ######################
+#split to x (the features) and y, for train and test
 train.c.noHighCor.x <- train.c.noHighCor[,-1]
 train.c.noHighCor.y <- train.c.noHighCor[,1]
 test.c.noHighCor.x <- test.c.noHighCor[,-1]
@@ -154,6 +155,7 @@ cat("Best K is: ", toString(best_k))
 
 # 3.d (2) Use the model you trained to predict the test data's labels:
 ##############
+#using the best model means using the best k
 knn.model <- knn(train.c.noHighCor.x, test.c.noHighCor.x, train.c.noHighCor.y, k=best_k, prob = TRUE)
 
 # 4. ROC
@@ -175,7 +177,7 @@ pc.model <- prcomp(train.c[,-1],center = TRUE, scale. = TRUE)
 
 # 5.b (2) plot the drop in the variance explained by the PC's:
 ##########
-barplot(pc.model$sdev^2, xlab = "Principal components", ylab = "Variance", main = "Drop in the variance explained by the PC's")
+barplot(pc.model$sdev^2, xlab = "Principal components", ylab = "Variance",main = "Drop in the variance explained by the PC's")
 
 
 # 5.c (6) Using the PC's you created above, create two new data frames named train.c.pca and test.c.pca in which the features
@@ -229,7 +231,7 @@ data.d[is.na(data.d$SkinThickness), 'SkinThickness'] <- mean(data.d$SkinThicknes
 
 # 7.a (5) plot the density of the LOF scores using all features
 #################
-lof.model <- lofactor(data.d.x, 8)
+lof.model <- lofactor(data.d[,-9], 8) # chose an arbitrary number of k=8, and used all data except Outcome
 plot(density(lof.model), main = "Density of the LOF scores using all features", xlab = "lof values")
 
 
@@ -245,12 +247,12 @@ data.d <- data.d[lof.model < 1.5,]
 
 # 8.a. (1) Split the data into test (30%) and train (70%) sets with respect to the target variable. Save them as train.d and test.d.
 #############
-
+# first take 70% with Outcome==1
 data.d.outcome1 = data.d[data.d$Outcome == 1,]
 V <- sample.split(data.d.outcome1, SplitRatio = 0.7, group = NULL )
 train.d <- data.d.outcome1[V,]
 test.d <- data.d.outcome1[!V,]
-
+#Second add 30% with Outcome==0
 data.d.outcome0 = data.d[data.d$Outcome == 0,]
 V <- sample.split(data.d.outcome0, SplitRatio = 0.7, group = NULL )
 train.d <- rbind(train.d, data.d.outcome0[V,])
@@ -259,39 +261,35 @@ test.d <- rbind(test.d, data.d.outcome0[!V,])
 # 8.b. (4) Create an SVM model with as many features as possible. Your grade for this will be based on your error rate (computed below).
 # Use it to predict the test labels and save the predictions with the name res.
 ############
+#split to x (the features) and y, for train and test
 train.d.x <- train.d[,-9]
 train.d.y <- train.d[,9]
 test.d.x <- test.d[,-9]
 test.d.y <- test.d[,9]
-
-
-selected.svm.features <- c("DiabetesPedigreeFunction","Glucose","BloodPressure","Insulin")
-svm.model <- svm(x = train.d.x[,selected.svm.features], y = train.d.y)
-res <- predict(svm.model, test.d.x[,selected.svm.features])
-
-
+# Used all features. no reason not to.
+svm.model <- svm(x = train.d.x[,], y = train.d.y)
+res <- predict(svm.model, test.d.x[,])
 # 8.c. (1) compute the error rate:
 ############
 1-mean(test.d$Outcome == round(res))
-
+# got 0.2540984
 
 # 8.d. (6) Tune the SVM model using no more than 5 different costs, 5 different gammas and 5 CV. Full points if you improve your error rate below 23%.
 ###########
 #typical ranges are found online. base of gamma values is 0/25 because we chose 4 features and the its default is 1/ncol(x)
-svm_tune <- tune(svm, train.x=train.d.x[,selected.svm.features], train.y=train.d.y, ranges=list(cost=c(0.01, 0.5, 2), gamma=2^(-2:2)))
+svm_tune <- tune(svm, train.x=train.d.x[,], train.y=train.d.y, ranges=list(cost=c(0.001, 0.01, 0.5, 2), gamma=0.25^(0:4)))
 
 
 # 8.e. (3) display the best model found (its parameters) and use it to predict the test values - save the predictions with the name res2.
 ##################
 svm_tune$best.parameters
-svm.model2 <- svm(x = train.d.x[,selected.svm.features],y = train.d.y, cost=svm_tune$best.parameters[1,1], gamma = svm_tune$best.parameters[1,2])
-res2 <- predict(svm.model2, test.d.x[,selected.svm.features])
-
+svm.best.model <- svm(x = train.d.x[,],y = train.d.y, cost=svm_tune$best.parameters[1,1], gamma = svm_tune$best.parameters[1,2])
+res2 <- predict(svm.best.model2, test.d.x[,])
 
 # 8.f. (1) show if it improved by computing the new error rate: 
 ###########
 1-mean(test.d$Outcome == round(res2))
-# got 0.2145749
+# got 0.2295082
 
 
 # 9. RANDOM FOREST
@@ -301,6 +299,8 @@ res2 <- predict(svm.model2, test.d.x[,selected.svm.features])
 ###############
 #Pregnancies, SkinThickness, and age seem less relevant. Taking the rest
 selected.rf.features <- c("Glucose","BloodPressure","Insulin","BMI","DiabetesPedigreeFunction")
+# It is probably a bit more proper to factorize the Outcome column (even a warning appears which states that)
+# but we want to use the error rate exactly the same as before for comparison
 rf.model <- randomForest(train.d.x[,selected.rf.features], train.d.y, importance = TRUE, ntree = 2000)
 
 # 9.b. (1) Use your model to predict the test outcome and save your predictions as resForest.
@@ -331,13 +331,13 @@ varImpPlot(rf.model, main = "Variables importance: accuracy(%IncMSE), gini measu
 data.m <- read.csv('Movies/movies.csv', header =  TRUE)
 
 
-
 # 10.b. (4) using the features: 'rating','year','votes','length'
 # run kmeans using 6 centers.
 ########
 selected.kmeans.features <- c("rating","year","votes","length")
 data.m <- as.data.frame(scale(data.m[,selected.kmeans.features]))
 kmeans.6.model <- kmeans(data.m, 6)
+
 
 # 10.c. (3) plot the clusters:
 #######
@@ -353,7 +353,7 @@ plot(data.m[,c('rating','year')],col=kmeans.6.model$cluster,main='data.m cluster
 # it shows that all of the centers are pretty close to each other (notice that the scale is much smaller). for our case, we display them
 # on top of the 2 features plotted before.
 points(as.data.frame(kmeans.6.model$centers[,c("rating","year")]),col=c(1:6),pch=23, bg=c(1:6),cex=4)
-# Notice that even in the 2 best discriminant features, only 4 clusters are clearly seperated.
-# this is shown even better by the closeness of the centers. So, this means, that the true prior of the data (assuming it is 
-# constructed by centroids) consists only about 4 centroids, rather than 6.
+# Notice that even in the 2 best discriminant features, we can't find 6 seperated (or even closely seperated) clusters.
+# This is shown even better by the closeness of the centers. So, this means, that the true prior of the data (assuming it is 
+# constructed by centroids) consists of less than 6 centroids (probably more like 3 or 4).
 
